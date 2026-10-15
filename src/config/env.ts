@@ -17,7 +17,5 @@ export const env = {
   stripeSecretKey: getRequiredEnv("STRIPE_SECRET_KEY"),
   stripeWebhookSecret: getRequiredEnv("STRIPE_WEBHOOK_SECRET"),
 
-  frontendUrl:
-  process.env.FRONTEND_URL ||
-  "https://shoplite-frontend-inky.vercel.app",
+  frontendUrl: getRequiredEnv("FRONTEND_URL"),
 } as const;

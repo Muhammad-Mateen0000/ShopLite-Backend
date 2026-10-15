@@ -22,7 +22,6 @@ export async function createCheckoutSession(
 
   if (productsError) {
     console.error("Product fetch failed:", productsError);
-
     throw new Error("Failed to fetch products");
   }
 
@@ -65,7 +64,6 @@ export async function createCheckoutSession(
 
   if (orderError || !order) {
     console.error("Order creation failed:", orderError);
-
     throw new Error("Failed to create order");
   }
 
@@ -81,10 +79,7 @@ export async function createCheckoutSession(
     .insert(orderItemsWithOrderId);
 
   if (orderItemsError) {
-    console.error(
-      "Order items creation failed:",
-      orderItemsError,
-    );
+    console.error("Order items creation failed:", orderItemsError);
 
     await supabase
       .from("orders")
@@ -109,23 +104,37 @@ export async function createCheckoutSession(
           unit_amount: product.price,
           product_data: {
             name: product.name,
-            description:
-              product.description ?? undefined,
+            description: product.description ?? undefined,
           },
         },
       };
     });
 
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    line_items: lineItems,
-    success_url: `${env.frontendUrl}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${env.frontendUrl}/payment-cancel`,
-    metadata: {
-      orderId: order.id,
-      userId,
-    },
-  });
+  let session: Stripe.Checkout.Session;
+
+  try {
+    session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: lineItems,
+      success_url: `${env.frontendUrl}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${env.frontendUrl}/payment-cancel`,
+      metadata: {
+        orderId: order.id,
+        userId,
+      },
+    });
+  } catch (error) {
+    console.error("STRIPE CHECKOUT SESSION FAILED:", error);
+    throw error;
+  }
+
+  if (!session.url) {
+    console.error("Stripe returned no Checkout URL.", {
+      sessionId: session.id,
+    });
+
+    throw new Error("Stripe did not return a Checkout URL");
+  }
 
   const { error: updateOrderError } = await supabase
     .from("orders")
